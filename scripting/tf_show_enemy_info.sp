@@ -8,12 +8,11 @@
 
 #pragma newdecls required
 
-#include <stocksoup/log_server>
 #include <stocksoup/tf/annotations>
 
 #define ANNOTATION_OFFS 0x66EFAA00
 
-#define PLUGIN_VERSION "0.0.0"
+#define PLUGIN_VERSION "1.0.0"
 public Plugin myinfo = {
 	name = "[TF2] Show Enemy Info",
 	author = "nosoop",
@@ -27,15 +26,21 @@ public Plugin myinfo = {
 #define ENEMYINFO_UBERCHARGE		(1 << 2)
 
 int g_iCurrentTarget[MAXPLAYERS + 1];
-int g_iCurrentTargetHealth[MAXPLAYERS + 1];
 int g_bAnnotationVisible[MAXPLAYERS + 1];
-int g_nTicksNotAimed[MAXPLAYERS + 1];
+
+float g_flHoverExpiryTime[MAXPLAYERS + 1];
 
 Handle g_OnAimTarget;
+
+ConVar g_OverlayDuration;
 
 public void OnPluginStart() {
 	g_OnAimTarget = CreateGlobalForward("TFEnemyInfo_OnAimTarget", ET_Hook, Param_Cell,
 			Param_Cell, Param_CellByRef);
+	
+	g_OverlayDuration = CreateConVar("sm_showenemyinfo_overlay_duration", "1.0",
+			"Duration that the info will be displayed for, in seconds.", _,
+			true, 0.0);
 }
 
 public void OnMapStart() {
@@ -57,9 +62,9 @@ void HookAnnotationLogic(int client) {
 }
 
 void ClearAnnotationData(int client) {
+	g_flHoverExpiryTime[client] = 0.0;
 	g_bAnnotationVisible[client] = false;
 	g_iCurrentTarget[client] = INVALID_ENT_REFERENCE;
-	g_nTicksNotAimed[client] = 0;
 }
 
 public void OnAnnotationPost(int client) {
@@ -72,24 +77,17 @@ public void OnAnnotationPost(int client) {
 	}
 	
 	int iTarget = GetClientAimTarget(client);
-	if (iTarget == -1 || !ShouldAnnotateTarget(client, iTarget)) {
-		if (g_bAnnotationVisible[client] && g_nTicksNotAimed[client]++ > 10) {
-			PrintCenterText(client, "");
-			ClearAnnotationData(client);
-		}
-		
-		int lastTarget = EntRefToEntIndex(g_iCurrentTarget[client]);
-		if (IsValidEntity(lastTarget) && !IsPlayerAlive(lastTarget)) {
-			PrintCenterText(client, "%N: DEAD", lastTarget);
-		}
+	if (iTarget != -1) {
+		g_iCurrentTarget[client] = EntIndexToEntRef(iTarget);
+		g_flHoverExpiryTime[client] = GetGameTime() + g_OverlayDuration.FloatValue;
+	} else if (GetGameTime() > g_flHoverExpiryTime[client]) {
+		PrintCenterText(client, "");
+		ClearAnnotationData(client);
 		return;
 	}
 	
-	int targetRef = EntIndexToEntRef(iTarget);
-	int targetHealth = GetClientHealth(iTarget);
-	
-	if (targetRef == g_iCurrentTarget[client]
-			&& targetHealth == g_iCurrentTargetHealth[client]) {
+	iTarget = EntRefToEntIndex(g_iCurrentTarget[client]);
+	if (!ShouldAnnotateTarget(client, iTarget)) {
 		return;
 	}
 	
@@ -104,7 +102,12 @@ public void OnAnnotationPost(int client) {
 		return;
 	}
 	
-	g_iCurrentTarget[client] = EntIndexToEntRef(iTarget);
+	// TODO store last state to only update when necessary
+	if (!UpdateClientDisplayParity(client, iTarget)) {
+		return;
+	}
+	
+	int targetHealth = GetClientHealth(iTarget);
 	
 	char buffer[256];
 	if (visflags & ENEMYINFO_NAME) {
@@ -134,21 +137,20 @@ public void OnAnnotationPost(int client) {
 	
 	PrintCenterText(client, "%s", buffer);
 	
-	/*TFAnnotationEvent annotation = new TFAnnotationEvent();
-	if (annotation) {
-		annotation.VisibilityBits = 1 << client;
-		annotation.SetText(buffer);
-		annotation.ID = 0x66EFAA00 + client;
-		annotation.Lifetime = 999.0;
-		annotation.FollowEntity = iTarget;
-		
-		annotation.Fire();
-	}*/
 	g_bAnnotationVisible[client] = true;
-	g_iCurrentTargetHealth[client] = targetHealth;
 }
 
 bool ShouldAnnotateTarget(int client, int target) {
 	return GetClientTeam(client) != GetClientTeam(target)
 			&& !TF2_IsPlayerInCondition(client, TFCond_Cloaked);
+}
+
+/**
+ * Updates parity data and checks if the new values are different.
+ * 
+ * @return True if the data has been updated and the info indicator needs to be redrawn.
+ */
+bool UpdateClientDisplayParity(int client, int target) {
+	// we'll just return true for now, if TF2 annotations work out we'll handle it accordingly
+	return true;
 }
