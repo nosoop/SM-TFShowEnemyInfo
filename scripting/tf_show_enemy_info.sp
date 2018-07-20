@@ -87,7 +87,7 @@ public void OnAnnotationPost(int client) {
 	}
 	
 	iTarget = GetClientFromSerial(g_iCurrentTarget[client]);
-	if (!IsValidEntity(iTarget)) {
+	if (!iTarget) {
 		PrintCenterText(client, "");
 		ClearAnnotationData(client);
 		return;
