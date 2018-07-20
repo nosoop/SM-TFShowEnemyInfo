@@ -12,7 +12,7 @@
 
 #define ANNOTATION_OFFS 0x66EFAA00
 
-#define PLUGIN_VERSION "1.0.0"
+#define PLUGIN_VERSION "1.0.1"
 public Plugin myinfo = {
 	name = "[TF2] Show Enemy Info",
 	author = "nosoop",
@@ -78,7 +78,7 @@ public void OnAnnotationPost(int client) {
 	
 	int iTarget = GetClientAimTarget(client);
 	if (iTarget != -1) {
-		g_iCurrentTarget[client] = EntIndexToEntRef(iTarget);
+		g_iCurrentTarget[client] = GetClientSerial(iTarget);
 		g_flHoverExpiryTime[client] = GetGameTime() + g_OverlayDuration.FloatValue;
 	} else if (GetGameTime() > g_flHoverExpiryTime[client]) {
 		PrintCenterText(client, "");
@@ -86,7 +86,13 @@ public void OnAnnotationPost(int client) {
 		return;
 	}
 	
-	iTarget = EntRefToEntIndex(g_iCurrentTarget[client]);
+	iTarget = GetClientFromSerial(g_iCurrentTarget[client]);
+	if (!IsValidEntity(iTarget)) {
+		PrintCenterText(client, "");
+		ClearAnnotationData(client);
+		return;
+	}
+	
 	if (!ShouldAnnotateTarget(client, iTarget)) {
 		return;
 	}
@@ -152,5 +158,6 @@ bool ShouldAnnotateTarget(int client, int target) {
  */
 bool UpdateClientDisplayParity(int client, int target) {
 	// we'll just return true for now, if TF2 annotations work out we'll handle it accordingly
+	#pragma unused client, target
 	return true;
 }
