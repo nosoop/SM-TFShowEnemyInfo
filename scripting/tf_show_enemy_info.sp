@@ -34,6 +34,8 @@ Handle g_OnAimTarget;
 
 ConVar g_OverlayDuration;
 
+Handle g_HudSync;
+
 public void OnPluginStart() {
 	g_OnAimTarget = CreateGlobalForward("TFEnemyInfo_OnAimTarget", ET_Hook, Param_Cell,
 			Param_Cell, Param_CellByRef);
@@ -41,6 +43,8 @@ public void OnPluginStart() {
 	g_OverlayDuration = CreateConVar("sm_showenemyinfo_overlay_duration", "1.0",
 			"Duration that the info will be displayed for, in seconds.", _,
 			true, 0.0);
+	
+	g_HudSync = CreateHudSynchronizer();
 }
 
 public void OnMapStart() {
@@ -81,14 +85,14 @@ public void OnAnnotationPost(int client) {
 		g_iCurrentTarget[client] = GetClientSerial(iTarget);
 		g_flHoverExpiryTime[client] = GetGameTime() + g_OverlayDuration.FloatValue;
 	} else if (GetGameTime() > g_flHoverExpiryTime[client]) {
-		PrintCenterText(client, "");
+		ClearSyncHud(client, g_HudSync);
 		ClearAnnotationData(client);
 		return;
 	}
 	
 	iTarget = GetClientFromSerial(g_iCurrentTarget[client]);
 	if (!iTarget) {
-		PrintCenterText(client, "");
+		ClearSyncHud(client, g_HudSync);
 		ClearAnnotationData(client);
 		return;
 	}
@@ -141,7 +145,19 @@ public void OnAnnotationPost(int client) {
 		}
 	}
 	
-	PrintCenterText(client, "%s", buffer);
+	int color;
+	switch (TF2_GetClientTeam(iTarget)) {
+		case TFTeam_Red: {
+			color = 0xFF3E3E;
+		}
+		case TFTeam_Blue: {
+			color = 0x9ACDFF;
+		}
+	}
+	
+	SetHudTextParams(-1.0, 0.25, 1.0, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF,
+			255);
+	ShowSyncHudText(client, g_HudSync, "%s", buffer);
 	
 	g_bAnnotationVisible[client] = true;
 }
@@ -157,7 +173,13 @@ bool ShouldAnnotateTarget(int client, int target) {
  * @return True if the data has been updated and the info indicator needs to be redrawn.
  */
 bool UpdateClientDisplayParity(int client, int target) {
+	static int g_iLastTarget[MAXPLAYERS + 1];
+	
+	if (target != g_iLastTarget[client]) {
+		g_iLastTarget[client] = target;
+		return true;
+	}
 	// we'll just return true for now, if TF2 annotations work out we'll handle it accordingly
-	#pragma unused client, target
-	return true;
+	// #pragma unused client, target
+	return false;
 }
