@@ -12,7 +12,7 @@
 
 #define ANNOTATION_OFFS 0x66EFAA00
 
-#define PLUGIN_VERSION "1.0.2"
+#define PLUGIN_VERSION "1.0.3"
 public Plugin myinfo = {
 	name = "[TF2] Show Enemy Info",
 	author = "nosoop",
@@ -26,8 +26,6 @@ public Plugin myinfo = {
 #define ENEMYINFO_UBERCHARGE		(1 << 2)
 
 int g_iCurrentTarget[MAXPLAYERS + 1];
-int g_bAnnotationVisible[MAXPLAYERS + 1];
-
 float g_flHoverExpiryTime[MAXPLAYERS + 1];
 
 Handle g_OnAimTarget;
@@ -67,7 +65,6 @@ void HookAnnotationLogic(int client) {
 
 void ClearAnnotationData(int client) {
 	g_flHoverExpiryTime[client] = 0.0;
-	g_bAnnotationVisible[client] = false;
 	g_iCurrentTarget[client] = INVALID_ENT_REFERENCE;
 }
 
@@ -80,18 +77,8 @@ public void OnAnnotationPost(int client) {
 		return;
 	}
 	
-	int iTarget = GetClientAimTarget(client);
-	if (iTarget != -1) {
-		g_iCurrentTarget[client] = GetClientSerial(iTarget);
-		g_flHoverExpiryTime[client] = GetGameTime() + g_OverlayDuration.FloatValue;
-	} else if (GetGameTime() > g_flHoverExpiryTime[client]) {
-		ClearSyncHud(client, g_HudSync);
-		ClearAnnotationData(client);
-		return;
-	}
-	
-	iTarget = GetClientFromSerial(g_iCurrentTarget[client]);
-	if (!iTarget) {
+	int iTarget = UpdateCurrentHUDTarget(client);
+	if (!iTarget && GetGameTime() > g_flHoverExpiryTime[client]) {
 		ClearSyncHud(client, g_HudSync);
 		ClearAnnotationData(client);
 		return;
@@ -158,8 +145,6 @@ public void OnAnnotationPost(int client) {
 	SetHudTextParams(-1.0, 0.35, 1.0, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF,
 			255);
 	ShowSyncHudText(client, g_HudSync, "%s", buffer);
-	
-	g_bAnnotationVisible[client] = true;
 }
 
 bool ShouldAnnotateTarget(int client, int target) {
@@ -173,13 +158,22 @@ bool ShouldAnnotateTarget(int client, int target) {
  * @return True if the data has been updated and the info indicator needs to be redrawn.
  */
 bool UpdateClientDisplayParity(int client, int target) {
-	static int g_iLastTarget[MAXPLAYERS + 1];
-	
-	if (target != g_iLastTarget[client]) {
-		g_iLastTarget[client] = target;
-		return true;
-	}
 	// we'll just return true for now, if TF2 annotations work out we'll handle it accordingly
-	// #pragma unused client, target
-	return false;
+	#pragma unused client, target
+	return true;
+}
+
+int UpdateCurrentHUDTarget(int client) {
+	int iTarget = GetClientAimTarget(client);
+	if (iTarget != -1) {
+		// found target, update overlay expiry
+		g_iCurrentTarget[client] = GetClientSerial(iTarget);
+		g_flHoverExpiryTime[client] = GetGameTime() + g_OverlayDuration.FloatValue;
+		return iTarget;
+	}
+	
+	if (g_flHoverExpiryTime[client] > GetGameTime()) {
+		return GetClientFromSerial(g_iCurrentTarget[client]);
+	}
+	return 0;
 }
