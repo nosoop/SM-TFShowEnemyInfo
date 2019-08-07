@@ -164,7 +164,7 @@ bool UpdateClientDisplayParity(int client, int target) {
 }
 
 int UpdateCurrentHUDTarget(int client) {
-	int iTarget = GetClientAimTarget(client);
+	int iTarget = GetClientHUDAimTarget(client);
 	if (iTarget != -1) {
 		// found target, update overlay expiry
 		g_iCurrentTarget[client] = GetClientSerial(iTarget);
@@ -176,4 +176,25 @@ int UpdateCurrentHUDTarget(int client) {
 		return GetClientFromSerial(g_iCurrentTarget[client]);
 	}
 	return 0;
+}
+
+int GetClientHUDAimTarget(int client) {
+	float vecEyeOrigin[3], vecEyeAngles[3];
+	GetClientEyePosition(client, vecEyeOrigin);
+	GetClientEyeAngles(client, vecEyeAngles);
+	
+	Handle trace = TR_TraceRayFilterEx(vecEyeOrigin, vecEyeAngles, MASK_SHOT_HULL,
+			RayType_Infinite, FilterAimEntities, client);
+	if (!TR_DidHit(trace)) {
+		delete trace;
+		return -1;
+	}
+	
+	int entity = TR_GetEntityIndex(trace);
+	delete trace;
+	return (0 < entity <= MaxClients)? entity : -1;
+}
+
+public bool FilterAimEntities(int entity, int mask, int client) {
+	return (entity != client && 0 < entity && entity <= MaxClients);
 }
