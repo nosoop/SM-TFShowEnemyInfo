@@ -12,7 +12,7 @@
 
 #define ANNOTATION_OFFS 0x66EFAA00
 
-#define PLUGIN_VERSION "1.0.1"
+#define PLUGIN_VERSION "1.0.2"
 public Plugin myinfo = {
 	name = "[TF2] Show Enemy Info",
 	author = "nosoop",
@@ -155,7 +155,7 @@ public void OnAnnotationPost(int client) {
 		}
 	}
 	
-	SetHudTextParams(-1.0, 0.25, 1.0, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF,
+	SetHudTextParams(-1.0, 0.35, 1.0, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF,
 			255);
 	ShowSyncHudText(client, g_HudSync, "%s", buffer);
 	
