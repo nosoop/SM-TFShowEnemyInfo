@@ -12,7 +12,7 @@
 
 #define ANNOTATION_OFFS 0x66EFAA00
 
-#define PLUGIN_VERSION "1.0.3"
+#define PLUGIN_VERSION "1.0.4"
 public Plugin myinfo = {
 	name = "[TF2] Show Enemy Info",
 	author = "nosoop",
@@ -79,8 +79,10 @@ public void OnAnnotationPost(int client) {
 	
 	int iTarget = UpdateCurrentHUDTarget(client);
 	if (!iTarget && GetGameTime() > g_flHoverExpiryTime[client]) {
-		ClearSyncHud(client, g_HudSync);
-		ClearAnnotationData(client);
+		if (!g_flHoverExpiryTime[client]) {
+			ClearSyncHud(client, g_HudSync);
+			ClearAnnotationData(client);
+		}
 		return;
 	}
 	
