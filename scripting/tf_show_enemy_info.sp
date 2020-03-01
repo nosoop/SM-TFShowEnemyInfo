@@ -12,7 +12,7 @@
 
 #define ANNOTATION_OFFS 0x66EFAA00
 
-#define PLUGIN_VERSION "1.0.4"
+#define PLUGIN_VERSION "1.0.5"
 public Plugin myinfo = {
 	name = "[TF2] Show Enemy Info",
 	author = "nosoop",
@@ -27,6 +27,7 @@ public Plugin myinfo = {
 
 int g_iCurrentTarget[MAXPLAYERS + 1];
 float g_flHoverExpiryTime[MAXPLAYERS + 1];
+float g_flLastParityUpdate[MAXPLAYERS + 1];
 
 Handle g_OnAimTarget;
 
@@ -65,6 +66,7 @@ void HookAnnotationLogic(int client) {
 
 void ClearAnnotationData(int client) {
 	g_flHoverExpiryTime[client] = 0.0;
+	g_flLastParityUpdate[client] = 0.0;
 	g_iCurrentTarget[client] = INVALID_ENT_REFERENCE;
 }
 
@@ -105,6 +107,7 @@ public void OnAnnotationPost(int client) {
 	if (!UpdateClientDisplayParity(client, iTarget)) {
 		return;
 	}
+	g_flLastParityUpdate[client] = GetGameTime();
 	
 	int targetHealth = GetClientHealth(iTarget);
 	
@@ -118,7 +121,7 @@ public void OnAnnotationPost(int client) {
 	if (visflags & ENEMYINFO_HEALTH) {
 		char nameBuffer[64];
 		strcopy(nameBuffer, sizeof(nameBuffer), buffer);
-		Format(buffer, sizeof(buffer), "%s: %d", buffer, targetHealth);
+		Format(buffer, sizeof(buffer), "%s: %d", buffer, IsPlayerAlive(iTarget)? targetHealth : 0);
 	}
 	
 	if (visflags & ENEMYINFO_UBERCHARGE) {
@@ -149,6 +152,9 @@ public void OnAnnotationPost(int client) {
 	ShowSyncHudText(client, g_HudSync, "%s", buffer);
 }
 
+/**
+ * @return true if the given target should have their information rendered.
+ */
 bool ShouldAnnotateTarget(int client, int target) {
 	return GetClientTeam(client) != GetClientTeam(target)
 			&& !TF2_IsPlayerInCondition(client, TFCond_Cloaked);
@@ -157,17 +163,30 @@ bool ShouldAnnotateTarget(int client, int target) {
 /**
  * Updates parity data and checks if the new values are different.
  * 
- * @return True if the data has been updated and the info indicator needs to be redrawn.
+ * @return true if the data has been updated and the info indicator needs to be redrawn.
  */
 bool UpdateClientDisplayParity(int client, int target) {
-	// we'll just return true for now, if TF2 annotations work out we'll handle it accordingly
-	#pragma unused client, target
-	return true;
+	int pflLastDamageTime = GetEntSendPropOffs(target, "m_flMvMLastDamageTime", true) - 0x04;
+	float flLastDamageTime = GetEntDataFloat(target, pflLastDamageTime);
+	
+	if (flLastDamageTime > g_flLastParityUpdate[client]) {
+		return true;
+	}
+	
+	if (GetGameTime() - g_flLastParityUpdate[client] > 0.5) {
+		return true;
+	}
+	return false;
 }
 
 int UpdateCurrentHUDTarget(int client) {
 	int iTarget = GetClientHUDAimTarget(client);
 	if (iTarget != -1) {
+		if (GetClientSerial(iTarget) != g_iCurrentTarget[client]) {
+			// target changed; force parity update
+			g_flLastParityUpdate[client] = 0.0;
+		}
+		
 		// found target, update overlay expiry
 		g_iCurrentTarget[client] = GetClientSerial(iTarget);
 		g_flHoverExpiryTime[client] = GetGameTime() + g_OverlayDuration.FloatValue;
@@ -180,7 +199,11 @@ int UpdateCurrentHUDTarget(int client) {
 	return 0;
 }
 
+/**
+ * Returns the index of the client being aimed at, or -1 if no client is available.
+ */
 int GetClientHUDAimTarget(int client) {
+	// we should use TR_EnumerateEntities now...
 	float vecEyeOrigin[3], vecEyeAngles[3];
 	GetClientEyePosition(client, vecEyeOrigin);
 	GetClientEyeAngles(client, vecEyeAngles);
