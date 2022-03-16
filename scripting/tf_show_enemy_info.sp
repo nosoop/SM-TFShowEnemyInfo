@@ -59,9 +59,26 @@ public void OnClientPutInServer(int client) {
 }
 
 void HookAnnotationLogic(int client) {
-	SDKHook(client, SDKHook_PostThinkPost, OnAnnotationPost);
-	
 	ClearAnnotationData(client);
+}
+
+public void OnGameFrame() {
+	if (GetGameTickCount() % 2 != 0) {
+		return;
+	}
+	
+	for (int i = 1; i <= MaxClients; i++) {
+		if (!IsClientInGame(i)) {
+			continue;
+		}
+		
+		if (IsFakeClient(i)) {
+			// no point in sending HUD elements to bots. they don't have real eyes.
+			continue;
+		}
+		
+		OnAnnotationPost(i);
+	}
 }
 
 void ClearAnnotationData(int client) {
@@ -71,14 +88,6 @@ void ClearAnnotationData(int client) {
 }
 
 void OnAnnotationPost(int client) {
-	if (IsFakeClient(client)) {
-		return;
-	}
-	
-	if (GetGameTickCount() % 2 != 0) {
-		return;
-	}
-	
 	int iTarget = UpdateCurrentHUDTarget(client);
 	if (!iTarget && GetGameTime() > g_flHoverExpiryTime[client]) {
 		if (!g_flHoverExpiryTime[client]) {
