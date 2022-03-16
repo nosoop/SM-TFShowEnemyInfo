@@ -70,7 +70,7 @@ void ClearAnnotationData(int client) {
 	g_iCurrentTarget[client] = INVALID_ENT_REFERENCE;
 }
 
-public void OnAnnotationPost(int client) {
+void OnAnnotationPost(int client) {
 	if (IsFakeClient(client)) {
 		return;
 	}
@@ -220,6 +220,6 @@ int GetClientHUDAimTarget(int client) {
 	return (0 < entity <= MaxClients)? entity : -1;
 }
 
-public bool FilterAimEntities(int entity, int mask, int client) {
+bool FilterAimEntities(int entity, int mask, int client) {
 	return (entity != client && 0 < entity && entity <= MaxClients);
 }
