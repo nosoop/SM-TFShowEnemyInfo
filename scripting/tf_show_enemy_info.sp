@@ -77,6 +77,13 @@ public void OnGameFrame() {
 			continue;
 		}
 		
+		switch (TF2_GetClientTeam(i)) {
+			case TFTeam_Unassigned, TFTeam_Spectator: {
+				// spectating players can always see targets
+				continue;
+			}
+		}
+		
 		OnAnnotationPost(i);
 	}
 }
