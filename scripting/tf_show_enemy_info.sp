@@ -12,7 +12,7 @@
 
 #define ANNOTATION_OFFS 0x66EFAA00
 
-#define PLUGIN_VERSION "1.0.6"
+#define PLUGIN_VERSION "1.1.0"
 public Plugin myinfo = {
 	name = "[TF2] Show Enemy Info",
 	author = "nosoop",
@@ -32,6 +32,7 @@ float g_flLastParityUpdate[MAXPLAYERS + 1];
 Handle g_OnAimTarget;
 
 ConVar g_OverlayDuration;
+ConVar g_OverlayPositionY;
 
 Handle g_HudSync;
 
@@ -42,7 +43,8 @@ public void OnPluginStart() {
 	g_OverlayDuration = CreateConVar("sm_showenemyinfo_overlay_duration", "1.0",
 			"Duration that the info will be displayed for, in seconds.", _,
 			true, 0.0);
-	
+	g_OverlayPositionY = CreateConVar("sm_showenemyinfo_overlay_pos_y", "0.35",
+			"Vertical position of the overlay text.", _, true, 0.0, true, 1.0);
 	g_HudSync = CreateHudSynchronizer();
 }
 
@@ -163,8 +165,8 @@ void OnAnnotationPost(int client) {
 		}
 	}
 	
-	SetHudTextParams(-1.0, 0.35, 1.0, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF,
-			255);
+	SetHudTextParams(-1.0, g_OverlayPositionY.FloatValue, 1.0,
+			(color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, 255);
 	ShowSyncHudText(client, g_HudSync, "%s", buffer);
 }
 
