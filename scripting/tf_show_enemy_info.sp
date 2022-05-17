@@ -12,7 +12,7 @@
 
 #define ANNOTATION_OFFS 0x66EFAA00
 
-#define PLUGIN_VERSION "1.0.5"
+#define PLUGIN_VERSION "1.0.6"
 public Plugin myinfo = {
 	name = "[TF2] Show Enemy Info",
 	author = "nosoop",
@@ -172,7 +172,7 @@ void OnAnnotationPost(int client) {
  * @return true if the given target should have their information rendered.
  */
 bool ShouldAnnotateTarget(int client, int target) {
-	return GetClientTeam(client) != GetClientTeam(target)
+	return client && target && GetClientTeam(client) != GetClientTeam(target)
 			&& !TF2_IsPlayerInCondition(client, TFCond_Cloaked);
 }
 
